@@ -8,7 +8,12 @@ part 'sse_event_model.dart';
 
 /// A client for subscribing to Server-Sent Events (SSE).
 class SSEClient {
+  static bool _connectionClosed = false;
   static http.Client _client = new http.Client();
+
+  static bool _isConnectionClosed() {
+    return _connectionClosed;
+  }
 
   /// Retry the SSE connection after a delay.
   ///
@@ -24,15 +29,17 @@ class SSEClient {
       required StreamController<SSEModel> streamController,
       Map<String, dynamic>? body}) {
     print('---RETRY CONNECTION---');
-    Future.delayed(Duration(seconds: 5), () {
-      subscribeToSSE(
-        method: method,
-        url: url,
-        header: header,
-        body: body,
-        oldStreamController: streamController,
-      );
-    });
+    if (!_isConnectionClosed()) {
+      Future.delayed(Duration(seconds: 5), () {
+        subscribeToSSE(
+          method: method,
+          url: url,
+          header: header,
+          body: body,
+          oldStreamController: streamController,
+        );
+      });
+    }
   }
 
   /// Subscribe to Server-Sent Events.
@@ -55,6 +62,7 @@ class SSEClient {
     }
     var lineRegex = RegExp(r'^([^:]*)(?::)?(?: )?(.*)?$');
     var currentSSEModel = SSEModel(data: '', id: '', event: '');
+    _connectionClosed = true;
     print("--SUBSCRIBING TO SSE---");
     while (true) {
       try {
@@ -169,6 +177,7 @@ class SSEClient {
 
   /// Unsubscribe from the SSE.
   static void unsubscribeFromSSE() {
+    _connectionClosed = true;
     _client.close();
   }
 }
